@@ -20,6 +20,7 @@ def get_setting():  # ←將「讀取設定檔」寫成函式, 可讓程式易�
 def get_data():
     data = get_setting()
     dates = []
+    
     start_date = datetime.datetime.strptime(data[1], '%Y%m%d')
     end_date = datetime.datetime.strptime(data[2], '%Y%m%d')
     for daynumber in range((end_date - start_date).days + 1):
@@ -31,15 +32,19 @@ def get_data():
 
 def crawl_data(date, symbol):
     # 下載股價
-    r = requests.get(
-        'https://www.twse.com.tw/exchangeReport/MI_INDEX?response=csv&date=' + date + '&type=ALL')
+    try:
+        r = requests.get(
+            'https://www.twse.com.tw/exchangeReport/MI_INDEX?response=csv&date=' + date + '&type=ALL')
 
-    r_text = [i for i in r.text.split('\n') if len(
+        r_text = [i for i in r.text.split('\n') if len(
         i.split('",')) == 17 and i[0] != '=']
-    df = pd.read_csv(StringIO("\n".join(r_text)), header=0)
+        df = pd.read_csv(StringIO("\n".join(r_text)), header=0)
 
-    df = df.drop(columns=['Unnamed: 16'])
-    filter_df = df[df["證券代號"] == symbol]
-    filter_df.insert(0, "日期", date)
-    df_columns = filter_df.columns
-    return list(filter_df.iloc[0]), filter_df.columns
+        df = df.drop(columns=['Unnamed: 16'])
+        filter_df = df[df["證券代號"] == symbol]
+        filter_df.insert(0, "日期", date)
+        df_columns = filter_df.columns
+        return list(filter_df.iloc[0]), df_columns
+    except Exception as e:
+        print(f"error! {date}: {e}")
+        return None

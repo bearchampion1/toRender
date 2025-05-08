@@ -106,6 +106,12 @@ def handle_message(event):
                 for date in dates:
                     sleep(1)
                     try:
+                        data = []
+                        for date in dates:
+                            df =m.crawl_data(date, stock_symbol)
+                            if df is not None:
+                                data.append(df)
+
                         crawler_data = m.crawl_data(date, stock_symbol)
                         all_list.append(crawler_data[0])
                         df_columns = crawler_data[1]
