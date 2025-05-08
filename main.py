@@ -3,7 +3,7 @@ from time import sleep
 import pandas as pd
 import matplotlib.pyplot as plt
 import mpl_finance as mpf
-from flask import Flask, request, abort, send_from_directory
+from flask import Flask, request, abort
 import crawler_module as m
 from dotenv import load_dotenv
 from linebot.v3 import WebhookHandler
@@ -33,11 +33,9 @@ print("LINE_CHANNEL_SECRET:", line_channel_secret)
 configuration = Configuration(access_token=line_access_token)
 whandler = WebhookHandler(line_channel_secret)
 
+# 使用者狀態管理
 user_states = {}
-"""
-def  webhook_handler(environ, start_response):
-    return app(environ, start_response)
-"""
+
 @app.route("/", methods=["GET"])
 def index():
     return "The server is running!"
@@ -87,11 +85,11 @@ def handle_message(event):
             if len(text) == 8 and text.isdigit():
                 state["end"] = text
 
-                # 儲存到 stock.txt
+                # 儲存查詢資訊
                 with open('stock.txt', 'w') as f:
                     f.write(f"{state['symbol']},{state['start']},{state['end']}")
 
-                # 回覆等待訊息
+                # 通知開始處理資料
                 line_bot_api.push_message(
                     PushMessageRequest(
                         to=user_id,
@@ -99,28 +97,32 @@ def handle_message(event):
                     )
                 )
 
-                # ⏳ 生成圖片並回傳
+                # 開始處理圖表
                 stock_symbol, dates = m.get_data()
                 all_list = []
+                df_columns = None
 
                 for date in dates:
                     sleep(1)
                     try:
-                        all_data = []
-                        for date in dates:
-                            df = m.crawl_data(date, stock_symbol)
-                            if df is not None:
-                                all_data.append(df)
-                        if not all_data:
-                            line_bot_api.reply_message(event.reply_token, TextMessage(text="查無資料，請確認日期或代碼。"))
-                            return
-
-                        crawler_data = m.crawl_data(date, stock_symbol)
-                        all_list.append(crawler_data[0])
-                        df_columns = crawler_data[1]
+                        df = m.crawl_data(date, stock_symbol)
+                        if df is not None:
+                            all_list.append(df[0])
+                            if df_columns is None:
+                                df_columns = df[1]
                     except Exception as e:
                         print(f"error! {date}: {e}")
 
+                if not all_list:
+                    line_bot_api.reply_message(
+                        ReplyMessageRequest(
+                            reply_token=event.reply_token,
+                            messages=[TextMessage(text="查無資料，請確認日期或代碼。")]
+                        )
+                    )
+                    return
+
+                # 整理成 DataFrame
                 all_df = pd.DataFrame(all_list, columns=df_columns)
                 day = all_df["日期"].astype(str)
                 openprice = all_df["開盤價"].str.replace(",", "", regex=False).astype(float)
@@ -131,6 +133,7 @@ def handle_message(event):
                 ma10 = close.rolling(window=10).mean()
                 ma30 = close.rolling(window=30).mean()
 
+                # 繪製圖表
                 fig, (ax, ax2) = plt.subplots(2, 1, sharex=True, figsize=(24, 15), dpi=100)
                 plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']
                 ax.set_title(f"{stock_symbol} K 線圖 ({dates[0]} ~ {dates[-1]})")
@@ -148,11 +151,13 @@ def handle_message(event):
                 ax2.set_xticklabels(day[::5])
                 ax2.grid(True)
 
+                # 儲存圖片
                 save_path = "./static/k_line_chart.jpg"
                 os.makedirs("./static", exist_ok=True)
                 plt.savefig(save_path, bbox_inches='tight')
                 plt.close()
 
+                # 傳送圖片
                 image_url = request.url_root + "static/k_line_chart.jpg"
                 image_url = image_url.replace("http", "https")
                 image_message = ImageMessage(
@@ -166,10 +171,13 @@ def handle_message(event):
                     )
                 )
 
+                # 重置狀態
                 user_states[user_id] = {"step": -1}
                 return
+
             else:
                 reply = "格式錯誤，請重新輸入結束日期（YYYYMMDD）"
+
         else:
             reply = "請輸入「股票資訊」來查詢 K 線圖"
 
@@ -180,5 +188,3 @@ def handle_message(event):
                 messages=[TextMessage(text=reply)]
             )
         )
-
-

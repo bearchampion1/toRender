@@ -34,19 +34,26 @@ def crawl_data(date, symbol):
     try:
         url = f'https://www.twse.com.tw/exchangeReport/MI_INDEX?response=csv&date={date}&type=ALL'
         r = requests.get(url, timeout=10)
+
         if r.status_code != 200:
             print(f"error! {date}: HTTP {r.status_code}")
             return None
 
-        r_text = [i for i in r.text.split('\n') if len(i.split('",')) == 17 and i[0] != '=']
+        # 防止非 CSV 資料觸發過大解析
+        if not r.headers.get('Content-Type', '').startswith('text/csv') and len(r.text) > 100000:
+            print(f"error! {date}: Unexpected content type or size too large")
+            return None
+
+        # 清洗資料
+        lines = r.text.split('\n')
+        r_text = [line for line in lines if len(line.split('",')) == 17 and not line.startswith('=')]
         if not r_text:
             print(f"error! {date}: No valid CSV rows")
             return None
 
         df = pd.read_csv(StringIO("\n".join(r_text)), header=0)
-
         if df.empty:
-            print(f"error! {date}: Parsed CSV is empty")
+            print(f"error! {date}: Empty DataFrame after CSV parsing")
             return None
 
         df = df.drop(columns=['Unnamed: 16'], errors='ignore')
