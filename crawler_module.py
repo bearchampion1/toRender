@@ -31,20 +31,35 @@ def get_data():
 
 
 def crawl_data(date, symbol):
-    # 下載股價
     try:
-        r = requests.get(
-            'https://www.twse.com.tw/exchangeReport/MI_INDEX?response=csv&date=' + date + '&type=ALL')
+        url = f'https://www.twse.com.tw/exchangeReport/MI_INDEX?response=csv&date={date}&type=ALL'
+        r = requests.get(url, timeout=10)
+        if r.status_code != 200:
+            print(f"error! {date}: HTTP {r.status_code}")
+            return None
 
-        r_text = [i for i in r.text.split('\n') if len(
-        i.split('",')) == 17 and i[0] != '=']
+        r_text = [i for i in r.text.split('\n') if len(i.split('",')) == 17 and i[0] != '=']
+        if not r_text:
+            print(f"error! {date}: No valid CSV rows")
+            return None
+
         df = pd.read_csv(StringIO("\n".join(r_text)), header=0)
 
-        df = df.drop(columns=['Unnamed: 16'])
+        if df.empty:
+            print(f"error! {date}: Parsed CSV is empty")
+            return None
+
+        df = df.drop(columns=['Unnamed: 16'], errors='ignore')
         filter_df = df[df["證券代號"] == symbol]
+
+        if filter_df.empty:
+            print(f"error! {date}: Symbol {symbol} not found")
+            return None
+
         filter_df.insert(0, "日期", date)
         df_columns = filter_df.columns
         return list(filter_df.iloc[0]), df_columns
+
     except Exception as e:
         print(f"error! {date}: {e}")
         return None

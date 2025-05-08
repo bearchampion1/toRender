@@ -106,11 +106,14 @@ def handle_message(event):
                 for date in dates:
                     sleep(1)
                     try:
-                        data = []
+                        all_data = []
                         for date in dates:
-                            df =m.crawl_data(date, stock_symbol)
+                            df = m.crawl_data(date, stock_symbol)
                             if df is not None:
-                                data.append(df)
+                                all_data.append(df)
+                        if not all_data:
+                            line_bot_api.reply_message(event.reply_token, TextMessage(text="查無資料，請確認日期或代碼。"))
+                            return
 
                         crawler_data = m.crawl_data(date, stock_symbol)
                         all_list.append(crawler_data[0])
