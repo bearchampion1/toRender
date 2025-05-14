@@ -1,8 +1,7 @@
 Flask
-python-dotenv
-line-bot-sdk>=3.0.0
-requests
+yfinance
+mplfinance
 pandas
-matplotlib
-mpl_finance
-gunicorn
+numpy
+python-dotenv
+line-bot-sdk==3.*
