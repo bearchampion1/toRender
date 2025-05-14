@@ -314,6 +314,9 @@ def callback():
         logger.error("Invalid signature")
         abort(400)
     return 'OK'
+@app.route("/")
+def index():
+    return "LINE Bot is running."
 
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
