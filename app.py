@@ -305,13 +305,19 @@ def generate_stock_chart(symbol, start_date, end_date, user_id):
         change = last_close - previous_close if previous_close is not None and last_close is not None else None
         change_percent = (change / previous_close * 100) if previous_close is not None and change is not None else None
         
-        # Build title with safe string formatting
+        # Build title with improved formatting for zero changes
         title = f"{symbol} K線圖"
         if last_close is not None:
             title += f"\n收盤: {last_close:.2f}"
             
+        # Improved change display logic
         if change is not None and change_percent is not None:
-            title += f" | 漲跌: {change:.2f} ({change_percent:.2f}%)"
+            if abs(change) < 0.01:  # Consider very small changes as flat
+                title += " | 持平"
+            elif change > 0:
+                title += f" | 漲跌: +{change:.2f} (+{change_percent:.2f}%)"
+            else:  # change < 0
+                title += f" | 漲跌: {change:.2f} ({change_percent:.2f}%)"
         
         # Create the plot
         mpf.plot(
