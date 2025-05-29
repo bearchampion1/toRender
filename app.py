@@ -30,9 +30,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Load environment variables
-load_dotenv("id_code.env")
+load_dotenv("id.env")
 CHANNEL_SECRET = os.getenv("CHANNEL_SECRET")
-CHANNEL_ACCESS_TOKEN = os.getenv("CHANNEL_ACCESS_TOKEN")
+CHANNEL_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 
 # Provide fallback values for testing
 if not CHANNEL_SECRET:
